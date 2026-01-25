@@ -16,8 +16,8 @@ pipeline {
                     echo 'incrementing app version...'
 
                     sh '''
-                      mvn build-helper:parse-version versions:set \
-                      -DnewVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion} \
+                      mvn build-helper:parse-version \
+                      versions:set -DnewVersion=1.0.${BUILD_NUMBER} \
                       versions:commit
                     '''
 
@@ -30,27 +30,20 @@ pipeline {
 
         stage('build app') {
             steps {
-                script {
-                    echo 'building the application...'
-                    sh 'mvn clean package'
-                }
+                sh 'mvn clean package'
             }
         }
 
         stage('build image') {
             steps {
-                script {
-                    echo 'building docker image...'
-
-                    withCredentials([usernamePassword(
-                        credentialsId: 'ecr-credentials',
-                        usernameVariable: 'USER',
-                        passwordVariable: 'PASS'
-                    )]) {
-                        sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} ."
-                        sh "echo ${PASS} | docker login -u ${USER} --password-stdin ${DOCKER_REPO_SERVER}"
-                        sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: 'ecr-credentials',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} ."
+                    sh "echo ${PASS} | docker login -u ${USER} --password-stdin ${DOCKER_REPO_SERVER}"
+                    sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
                 }
             }
         }
@@ -59,22 +52,16 @@ pipeline {
             environment {
                 AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
                 AWS_SECRET_ACCESS_KEY = credentials('jenkins-aws_secret_access_key')
-                APP_NAME = 'java-maven-app'
             }
             steps {
-                script {
-                    echo 'deploying docker image...'
-                    sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
-                    sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
-                }
+                sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
+                sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
             }
         }
 
         stage('commit version update') {
             steps {
-                script {
-                    echo 'skipping git commit step for now'
-                }
+                echo 'skipping git commit step for now'
             }
         }
     }
