@@ -48,9 +48,8 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                    # Replace IMAGE_TAG in YAML before applying
-                    envsubst < kubernetes/deployment.yaml | kubectl apply -f -
-                    envsubst < kubernetes/service.yaml | kubectl apply -f -
+                    kubectl apply -f kubernetes/deployment.yaml
+                    kubectl apply -f kubernetes/service.yaml
                     '''
                 }
             }

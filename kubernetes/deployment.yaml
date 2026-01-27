@@ -18,7 +18,7 @@ spec:
         - name: aws-registry-key
       containers:
         - name: java-maven-app
-          image: 943066268094.dkr.ecr.us-east-1.amazonaws.com/java-maven-app:${IMAGE_TAG}
+          image: 943066268094.dkr.ecr.us-east-1.amazonaws.com/java-maven-app:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
