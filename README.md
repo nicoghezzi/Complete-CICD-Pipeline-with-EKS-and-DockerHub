@@ -93,4 +93,3 @@ This project reflects real-world CI/CD practices for cloud-native applications, 
 
 2. Screenshot showing success on the CICD pipeline
 ![Lighthouse Report](/images/pipeline_success.png)
-
