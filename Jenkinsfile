@@ -3,8 +3,8 @@
 pipeline {
     agent {
         docker {
-            image 'maven:3.9.4-openjdk-17'  // Maven + Java pre-installed
-            args '-v $HOME/.m2:/root/.m2'   // persist Maven cache
+            image 'maven:3.9.4-openjdk-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.m2:/root/.m2 -v $WORKSPACE:/workspace'
         }
     }
 
@@ -14,14 +14,15 @@ pipeline {
     }
 
     stages {
-        stage('increment version') {
+        stage('Increment Version') {
             steps {
                 script {
-                    echo 'incrementing app version...'
+                    echo 'Incrementing app version...'
+                    // Make sure parsedVersion exists or wrap in try/catch
                     sh '''
-                        mvn build-helper:parse-version versions:set \
-                            -DnewVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion} \
-                            versions:commit
+                    mvn build-helper:parse-version versions:set \
+                        -DnewVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion} \
+                        versions:commit
                     '''
                     def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
                     def version = matcher[0][1]
@@ -30,24 +31,24 @@ pipeline {
             }
         }
 
-        stage('build app') {
+        stage('Build App') {
             steps {
                 script {
-                    echo 'building the application...'
+                    echo 'Building the application...'
                     sh 'mvn clean package'
                 }
             }
         }
 
-        stage('build image') {
+        stage('Build and Push Docker Image') {
             steps {
                 script {
-                    echo "building the docker image..."
+                    echo "Building Docker image..."
                     withCredentials([usernamePassword(
                         credentialsId: 'ecr-credentials',
                         usernameVariable: 'USER',
                         passwordVariable: 'PASS'
-                    )]){
+                    )]) {
                         sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} ."
                         sh 'echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}'
                         sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
@@ -56,27 +57,41 @@ pipeline {
             }
         }
 
-        stage('deploy') {
-            environment {
-                AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-                APP_NAME = 'java-maven-app'
-            }
-            steps {
-                script {
-                    echo 'deploying docker image...'
-                    sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
-                    sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
-                }
-            }
-        }
+ stage('Deploy') {
+    steps {
+        echo 'Deploying Docker image to Kubernetes...'
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'aws-access-key-id', 
+                usernameVariable: 'AWS_ACCESS_KEY_ID', 
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            )
+        ]) {
+            sh '''
+            docker run --rm \
+                -v $HOME/.kube:/root/.kube \
+                -v $WORKSPACE:/workspace \
+                -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                bitnami/kubectl:latest \
+                sh -c "envsubst < /workspace/kubernetes/deployment.yaml | kubectl apply -f -"
 
-        stage('commit version update') {
+            docker run --rm \
+                -v $HOME/.kube:/root/.kube \
+                -v $WORKSPACE:/workspace \
+                -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                bitnami/kubectl:latest \
+                sh -c "envsubst < /workspace/kubernetes/service.yaml | kubectl apply -f -"
+            '''
+        }
+    }
+}
+
+        stage('Commit Version Update') {
             steps {
-                script {
-                    echo 'skipping git commit step for now'
-                }
-            }        
+                echo 'Skipping Git commit step for now'
+            }
         }
     }
 }
