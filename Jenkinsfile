@@ -6,12 +6,14 @@ pipeline {
     environment {
         DOCKER_REPO_SERVER = '943066268094.dkr.ecr.us-east-1.amazonaws.com'
         DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
-        IMAGE_NAME = "latest"
+        IMAGE_TAG = "latest"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
+                echo 'Checking out source code...'
                 checkout scm
             }
         }
@@ -32,17 +34,24 @@ pipeline {
 
         stage('Build and Push Docker Image') {
             steps {
-                echo 'Building and pushing Docker image...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'ecr-credentials',
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS'
-                )]) {
-                    sh '''
-                    docker build -t ${DOCKER_REPO}:${IMAGE_NAME} .
-                    echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}
-                    docker push ${DOCKER_REPO}:${IMAGE_NAME}
-                    '''
+                script {
+                    echo 'Building and pushing Docker image...'
+                    withCredentials([usernamePassword(
+                        credentialsId: 'ecr-credentials',
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
+                    )]) {
+                        sh '''
+                        # Build Docker image
+                        docker build -t ${DOCKER_REPO}:${IMAGE_TAG} $WORKSPACE
+
+                        # Login to ECR
+                        echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}
+
+                        # Push image
+                        docker push ${DOCKER_REPO}:${IMAGE_TAG}
+                        '''
+                    }
                 }
             }
         }
@@ -58,17 +67,19 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                    # Deploy deployment.yaml
                     docker run --rm \
                         -v $HOME/.kube:/root/.kube \
-                        -v $WORKSPACE:/workspace \
+                        -v $WORKSPACE/kubernetes:/workspace/kubernetes \
                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
                         bitnami/kubectl:latest \
                         sh -c "envsubst < /workspace/kubernetes/deployment.yaml | kubectl apply -f -"
 
+                    # Deploy service.yaml
                     docker run --rm \
                         -v $HOME/.kube:/root/.kube \
-                        -v $WORKSPACE:/workspace \
+                        -v $WORKSPACE/kubernetes:/workspace/kubernetes \
                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
                         bitnami/kubectl:latest \
@@ -78,10 +89,11 @@ pipeline {
             }
         }
 
-        stage('Commit Version Update') {
+        stage('Skip Version Update') {
             steps {
-                echo 'Skipping Git commit step for now'
+                echo 'Skipping version commit/update stage'
             }
         }
+
     }
 }
