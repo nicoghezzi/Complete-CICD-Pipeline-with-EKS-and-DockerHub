@@ -1,51 +1,96 @@
-## Project Overview
+## Problem Statement
 
-Built a production-style CI/CD pipeline for Kubernetes deployments using Jenkins, automating build, containerization, and delivery to AWS EKS and DigitalOcean LKE.
-The project covered Maven-based Java applications, secure access to private Docker registries, and dynamic Kubernetes deployments across multiple environments.
-Configured Jenkins and supporting tooling to enable fast, repeatable, and secure end-to-end application delivery.
+I wanted to design and implement a realistic CI/CD pipeline that takes a Java application from source code to a live deployment on Amazon EKS, using industry-standard DevOps tools.
+The goal was not just success — but to understand and debug the real failures that occur when Jenkins, Docker, AWS, and Kubernetes interact.
 
-## Stack and Tooling
+## Solution Overview
 
-- Jenkins
-Designed multi-stage pipelines to automate build, test, and deployment workflows.
+I built a fully automated pipeline that:
+1. Builds a Java Maven application
+2. Containerizes it with Docker
+3. Pushes the image to AWS ECR
+4. Deploys it to Amazon EKS using Kubernetes manifests
 
-- AWS EKS and DigitalOcean LKE
-Used as managed Kubernetes clusters to simulate staging and production environments across clouds.
+## Tools & Technologies
 
-- Docker
-Containerized Java Maven applications for consistent Kubernetes deployments.
+- CI/CD: Jenkins (Declarative Pipeline)
+- Build Tool: Maven
+- Containerization: Docker
+- Container Registry: AWS ECR
+- Orchestration: Kubernetes (EKS)
+- Cloud Provider: AWS
+- CLI Tools: aws-cli, kubectl
+- Source Control: GitLab
 
-- kubectl
-Applied manifests and managed rollouts directly from Jenkins pipelines.
+## Pipeline Breakdown (4 main bullet points)
 
-- AWS CLI and GitLab
-Handled cluster authentication, credential validation, and source control integration.
+1. Source Code Checkout
 
-## What I Implemented
+Jenkins pulls the jenkins-jobs branch from GitLab
+Git authentication handled via Jenkins credentials
 
-- End-to-End CI/CD Automation
-Built pipelines that handle Maven builds, Docker image creation, and Kubernetes deployments across multiple cloud providers.
+2. Build Java Application
 
-- Secure Pipeline Configuration
-Managed cloud credentials, Docker registry access, and Kubernetes configurations using Jenkins credential management.
+mvn clean package
+Runs unit tests
+Produces a Spring Boot JAR
 
-- Dynamic and Reusable Deployments
-Templated Kubernetes manifests with environment variables to support environment-specific deployments without duplication.
+3. Docker Build & Push to ECR
 
-- Version Control Automation
-Integrated GitLab to automate version updates and commits as part of the deployment lifecycle.
+docker build -t <ECR_REPO>:latest .
+docker push <ECR_REPO>:latest
+Uses Amazon Corretto base image
+Authenticates securely with AWS ECR
 
-## Challenges and Solutions
+4. Deploy to Amazon EKS
 
-- Private Container Registry Access
-Enabled secure image pulls in Kubernetes by configuring and referencing image pull secrets.
+aws eks update-kubeconfig --region us-east-1 --name demo-cluster
+kubectl apply -f kubernetes/
+Dynamically configures kubeconfig
+Deploys application with rolling updates
 
-- Multi-Cloud Deployment Logic
-Parameterized Jenkins pipelines and managed separate kubeconfigs to support both EKS and LKE from a single workflow.
+## Challenges Encountered (Real-World)
 
-- Credential Handling
-Avoided exposing sensitive data by using Jenkins credential stores and secure injection patterns.
+This pipeline required 23+ executions to stabilize. Key issues included:
 
-## Why This Project Is Relevant
+❌ Jenkins Missing AWS CLI
+Symptom: aws: not found
+Fix: 
+- Installed AWS CLI inside the Jenkins container
+- Learned that Jenkins pipelines run where the agent executes
+
+❌ kubectl Could Not Reach Cluster
+Root Cause: kubeconfig was missing
+Fix: aws eks update-kubeconfig
+
+❌ Wrong EKS Cluster Name
+Error: ResourceNotFoundException: No cluster found
+Fix: Verified cluster name directly in AWS Console
+
+❌ Jenkins Agent Misunderstanding
+Confusion between Jenkins controller, container, and agent
+Realized tooling must exist in the agent environment
+
+❌ Docker Permission Issues
+
+Jenkins user lacked required privileges
+Resolved by correcting execution context
+
+## Final Result
+The pipeline now completes end-to-end successfully:
+
+✔ Code builds 
+✔ Image pushed to ECR
+✔ Kubernetes resources created
+✔ Application deployed to EKS
 
 This project reflects real-world CI/CD practices for cloud-native applications, combining Jenkins, Docker, and Kubernetes to deliver software reliably across multiple cloud environments. It demonstrates the ability to design secure, scalable deployment pipelines—core skills for DevOps, SRE, and cloud engineering roles.
+
+## Some Proof screenshots
+
+1. Screenshot showing 23 runs that made me debugged for 2 days.
+![Lighthouse Report](/images/23runs.png)
+
+2. Screenshot showing success on the CICD pipeline
+![Lighthouse Report](/images/pipeline_success.png)
+
