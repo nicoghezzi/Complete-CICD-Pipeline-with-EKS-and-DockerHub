@@ -1,5 +1,3 @@
-#!/usr/bin/env groovy
-
 pipeline {
     agent any
 
@@ -13,52 +11,35 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo 'Checking out source code...'
                 checkout scm
             }
         }
 
         stage('Build Maven App') {
             steps {
-                echo 'Building Maven app inside Docker...'
-                sh '''
-                docker run --rm \
-                    -v $WORKSPACE:/workspace \
-                    -v $HOME/.m2:/root/.m2 \
-                    -w /workspace \
-                    maven:3.9.4-eclipse-temurin-17 \
-                    mvn clean package
-                '''
+                echo 'Building Maven app (no Docker, no tricks)'
+                sh 'mvn clean package'
             }
         }
 
         stage('Build and Push Docker Image') {
             steps {
-                script {
-                    echo 'Building and pushing Docker image...'
-                    withCredentials([usernamePassword(
-                        credentialsId: 'ecr-credentials',
-                        usernameVariable: 'USER',
-                        passwordVariable: 'PASS'
-                    )]) {
-                        sh '''
-                        # Build Docker image
-                        docker build -t ${DOCKER_REPO}:${IMAGE_TAG} $WORKSPACE
-
-                        # Login to ECR
-                        echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}
-
-                        # Push image
-                        docker push ${DOCKER_REPO}:${IMAGE_TAG}
-                        '''
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: 'ecr-credentials',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                    docker build -t ${DOCKER_REPO}:${IMAGE_TAG} .
+                    echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}
+                    docker push ${DOCKER_REPO}:${IMAGE_TAG}
+                    '''
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying Docker image to Kubernetes...'
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'aws-access-key-id',
@@ -67,33 +48,11 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                    # Deploy deployment.yaml
-                    docker run --rm \
-                        -v $HOME/.kube:/root/.kube \
-                        -v $WORKSPACE/kubernetes:/workspace/kubernetes \
-                        -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-                        -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                        bitnami/kubectl:latest \
-                        sh -c "envsubst < /workspace/kubernetes/deployment.yaml | kubectl apply -f -"
-
-                    # Deploy service.yaml
-                    docker run --rm \
-                        -v $HOME/.kube:/root/.kube \
-                        -v $WORKSPACE/kubernetes:/workspace/kubernetes \
-                        -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-                        -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                        bitnami/kubectl:latest \
-                        sh -c "envsubst < /workspace/kubernetes/service.yaml | kubectl apply -f -"
+                    kubectl apply -f kubernetes/deployment.yaml
+                    kubectl apply -f kubernetes/service.yaml
                     '''
                 }
             }
         }
-
-        stage('Skip Version Update') {
-            steps {
-                echo 'Skipping version commit/update stage'
-            }
-        }
-
     }
 }
