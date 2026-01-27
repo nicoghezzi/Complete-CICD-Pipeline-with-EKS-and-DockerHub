@@ -18,7 +18,7 @@ pipeline {
                     -v $WORKSPACE:/workspace \
                     -v $HOME/.m2:/root/.m2 \
                     -w /workspace \
-                    maven:3.9.4-openjdk-17 \
+                    maven:3.9.4-eclipse-temurin-17 \
                     mvn clean package
                 '''
             }
