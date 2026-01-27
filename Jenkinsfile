@@ -1,34 +1,30 @@
 pipeline {
-    agent {
-        docker {
-            image 'amazon/aws-cli:2.13.0'  // AWS CLI preinstalled
-            args '-v /var/run/docker.sock:/var/run/docker.sock' // allows Docker commands inside the container
-        }
-    }
-
+    agent any
     environment {
         DOCKER_REPO_SERVER = '943066268094.dkr.ecr.us-east-1.amazonaws.com'
         DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
-        IMAGE_TAG = "latest"
+        IMAGE_TAG = "latest"  // can replace with ${BUILD_NUMBER} if you want versioning
     }
 
     stages {
 
         stage('Checkout') {
             steps {
+                echo 'Checking out source code'
                 checkout scm
             }
         }
 
         stage('Build Maven App') {
             steps {
-                echo 'Building Maven app (no Docker, no tricks)'
+                echo 'Building Maven app'
                 sh 'mvn clean package'
             }
         }
 
         stage('Build and Push Docker Image') {
             steps {
+                echo 'Building Docker image and pushing to ECR'
                 withCredentials([usernamePassword(
                     credentialsId: 'ecr-credentials',
                     usernameVariable: 'USER',
@@ -45,6 +41,7 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
+                echo 'Deploying to Kubernetes cluster'
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'aws-access-key-id',
@@ -53,10 +50,7 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                    # Configure kubeconfig for EKS
                     aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
-
-                    # Deploy application
                     kubectl apply -f kubernetes/deployment.yaml
                     kubectl apply -f kubernetes/service.yaml
                     '''
@@ -64,4 +58,14 @@ pipeline {
             }
         }
     }
+
+    post {
+        success {
+            echo "Pipeline finished successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Check logs!"
+        }
+    }
 }
+
