@@ -50,7 +50,7 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                    aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
+                    aws eks update-kubeconfig --region us-east-1 --name demo-cluster
                     kubectl apply -f kubernetes/deployment.yaml
                     kubectl apply -f kubernetes/service.yaml
                     '''
