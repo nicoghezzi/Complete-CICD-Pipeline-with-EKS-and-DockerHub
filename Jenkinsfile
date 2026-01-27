@@ -6,42 +6,21 @@ pipeline {
     environment {
         DOCKER_REPO_SERVER = '943066268094.dkr.ecr.us-east-1.amazonaws.com'
         DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
+        IMAGE_NAME = "latest-${BUILD_NUMBER}"  // simple tag without increment
     }
 
     stages {
-        stage('Increment Version') {
-            steps {
-                script {
-                    echo 'Incrementing app version...'
-                    // Run Maven inside container
-                    sh '''
-                    docker run --rm \
-                        -v $WORKSPACE:/workspace \
-                        -v $HOME/.m2:/root/.m2 \
-                        -w /workspace \
-                        maven:3.9.4-openjdk-17 \
-                        mvn build-helper:parse-version versions:set -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.minorVersion}.\${parsedVersion.nextIncrementalVersion} versions:commit
-                    '''
-                    def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
-                    def version = matcher[0][1]
-                    env.IMAGE_NAME = "$version-$BUILD_NUMBER"
-                }
-            }
-        }
-
         stage('Build App') {
             steps {
-                script {
-                    echo 'Building the application...'
-                    sh '''
-                    docker run --rm \
-                        -v $WORKSPACE:/workspace \
-                        -v $HOME/.m2:/root/.m2 \
-                        -w /workspace \
-                        maven:3.9.4-openjdk-17 \
-                        mvn clean package
-                    '''
-                }
+                echo 'Building the application...'
+                sh '''
+                docker run --rm \
+                    -v $WORKSPACE:/workspace \
+                    -v $HOME/.m2:/root/.m2 \
+                    -w /workspace \
+                    maven:3.9.4-openjdk-17 \
+                    mvn clean package
+                '''
             }
         }
 
