@@ -84,7 +84,15 @@ The pipeline now completes end-to-end successfully:
 ✔ Kubernetes resources created
 ✔ Application deployed to EKS
 
-This project reflects real-world CI/CD practices for cloud-native applications, combining Jenkins, Docker, and Kubernetes to deliver software reliably across multiple cloud environments. It demonstrates the ability to design secure, scalable deployment pipelines—core skills for DevOps, SRE, and cloud engineering roles.
+I got skills on 
+
+✅ Jenkins agent vs controller confusion — and resolution
+✅ AWS CLI missing inside Jenkins container (classic real-world failure)
+✅ EKS kubeconfig generation via AWS CLI
+✅ Correct ECR authentication flow
+✅ Kubernetes manifests actually applied to a real cluster
+✅ Debugging IAM / cluster naming issues
+✅ Understanding why pipelines fail, not just that they fail
 
 ## Some Proof screenshots
 
