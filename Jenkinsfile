@@ -48,6 +48,10 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                    # generate kubeconfig for EKS
+                    aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
+
+                    # deploy manifests
                     kubectl apply -f kubernetes/deployment.yaml
                     kubectl apply -f kubernetes/service.yaml
                     '''
