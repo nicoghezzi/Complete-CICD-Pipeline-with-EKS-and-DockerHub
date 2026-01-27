@@ -6,19 +6,24 @@ pipeline {
     environment {
         DOCKER_REPO_SERVER = '943066268094.dkr.ecr.us-east-1.amazonaws.com'
         DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
-        IMAGE_NAME = "latest" // fallback, can change to build number if you want
+        IMAGE_NAME = "latest"
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-        stage('Build App') {
+        stage('Build Maven App') {
             steps {
                 echo 'Building Maven app inside Docker...'
                 sh '''
                 docker run --rm \
-                    -v $WORKSPACE:$WORKSPACE \
+                    -v $WORKSPACE:/workspace \
                     -v $HOME/.m2:/root/.m2 \
-                    -w $WORKSPACE \
+                    -w /workspace \
                     maven:3.9.4-eclipse-temurin-17 \
                     mvn clean package
                 '''
@@ -27,21 +32,17 @@ pipeline {
 
         stage('Build and Push Docker Image') {
             steps {
-                script {
-                    echo 'Building and pushing Docker image...'
-                    withCredentials([usernamePassword(
-                        credentialsId: 'ecr-credentials',
-                        usernameVariable: 'USER',
-                        passwordVariable: 'PASS'
-                    )]) {
-                        sh '''
-                        docker build -t ${DOCKER_REPO}:${IMAGE_NAME} .
-
-                        echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}
-
-                        docker push ${DOCKER_REPO}:${IMAGE_NAME}
-                        '''
-                    }
+                echo 'Building and pushing Docker image...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'ecr-credentials',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                    docker build -t ${DOCKER_REPO}:${IMAGE_NAME} .
+                    echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}
+                    docker push ${DOCKER_REPO}:${IMAGE_NAME}
+                    '''
                 }
             }
         }
@@ -59,19 +60,19 @@ pipeline {
                     sh '''
                     docker run --rm \
                         -v $HOME/.kube:/root/.kube \
-                        -v $WORKSPACE:$WORKSPACE \
+                        -v $WORKSPACE:/workspace \
                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
                         bitnami/kubectl:latest \
-                        sh -c "envsubst < $WORKSPACE/kubernetes/deployment.yaml | kubectl apply -f -"
+                        sh -c "envsubst < /workspace/kubernetes/deployment.yaml | kubectl apply -f -"
 
                     docker run --rm \
                         -v $HOME/.kube:/root/.kube \
-                        -v $WORKSPACE:$WORKSPACE \
+                        -v $WORKSPACE:/workspace \
                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
                         bitnami/kubectl:latest \
-                        sh -c "envsubst < $WORKSPACE/kubernetes/service.yaml | kubectl apply -f -"
+                        sh -c "envsubst < /workspace/kubernetes/service.yaml | kubectl apply -f -"
                     '''
                 }
             }
@@ -82,6 +83,5 @@ pipeline {
                 echo 'Skipping Git commit step for now'
             }
         }
-
     }
 }
