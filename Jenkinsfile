@@ -1,12 +1,17 @@
 #!/usr/bin/env groovy
 
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.9.4-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.m2:/root/.m2 -v $WORKSPACE:/workspace'
+        }
+    }
 
     environment {
         DOCKER_REPO_SERVER = '943066268094.dkr.ecr.us-east-1.amazonaws.com'
         DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
-        IMAGE_NAME = "latest-${BUILD_NUMBER}"  // simple tag without increment
+        IMAGE_NAME = "latest-${BUILD_NUMBER}"  // fallback image name
     }
 
     stages {
@@ -19,7 +24,7 @@ pipeline {
                     -v $HOME/.m2:/root/.m2 \
                     -w /workspace \
                     maven:3.9.4-eclipse-temurin-17 \
-                    mvn clean package
+                    mvn -f /workspace/pom.xml clean package
                 '''
             }
         }
@@ -33,11 +38,9 @@ pipeline {
                         usernameVariable: 'USER',
                         passwordVariable: 'PASS'
                     )]) {
-                        sh """
-                        docker build -t ${DOCKER_REPO}:${IMAGE_NAME} .
-                        echo \$PASS | docker login -u \$USER --password-stdin ${DOCKER_REPO_SERVER}
-                        docker push ${DOCKER_REPO}:${IMAGE_NAME}
-                        """
+                        sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} ."
+                        sh 'echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}'
+                        sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
                     }
                 }
             }
