@@ -51,7 +51,9 @@ Deploys application with rolling updates
 
 ## Challenges Encountered (Real-World)
 
-This pipeline required 23+ executions to stabilize. Key issues included:
+This pipeline required 23+ executions to stabilize. You can check the pipelines_failures folders to see some of the pipelines failures. 
+
+Key issues included:
 
 ❌ Jenkins Missing AWS CLI
 Symptom: aws: not found
