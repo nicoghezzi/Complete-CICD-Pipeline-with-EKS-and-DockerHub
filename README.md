@@ -1,105 +1,103 @@
-## Problem Statement
+# 🚀 CI/CD Pipeline: Java → Docker → ECR → EKS
 
-I wanted to design and implement a realistic CI/CD pipeline that takes a Java application from source code to a live deployment on Amazon EKS, using industry-standard DevOps tools.
-The goal was not just success — but to understand and debug the real failures that occur when Jenkins, Docker, AWS, and Kubernetes interact.
+![CI/CD: Jenkins](https://img.shields.io/badge/CI%2FCD-Jenkins-%23D24939?style=for-the-badge&logo=jenkins&logoColor=white)
+![Build: Maven](https://img.shields.io/badge/Build-Maven-%23C71A36?style=for-the-badge&logo=apache-maven&logoColor=white)
+![Container: Docker](https://img.shields.io/badge/Container-Docker-%230db7ed?style=for-the-badge&logo=docker&logoColor=white)
+![Registry: ECR](https://img.shields.io/badge/Registry-ECR-%23FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![Orchestration: Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-%23326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Cloud: AWS](https://img.shields.io/badge/Cloud-AWS-%23FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white)
 
-## Solution Overview
+A production-style CI/CD pipeline that automates the deployment of a Java application from source code to a live environment on Amazon EKS.
 
-I built a fully automated pipeline that:
-1. Builds a Java Maven application
-2. Containerizes it with Docker
-3. Pushes the image to AWS ECR
-4. Deploys it to Amazon EKS using Kubernetes manifests
+---
 
-## Tools & Technologies
+## 📌 Overview
 
-- CI/CD: Jenkins (Declarative Pipeline)
-- Build Tool: Maven
-- Containerization: Docker
-- Container Registry: AWS ECR
-- Orchestration: Kubernetes (EKS)
-- Cloud Provider: AWS
-- CLI Tools: aws-cli, kubectl
-- Source Control: GitLab
+End-to-end pipeline that:
 
-## Pipeline Breakdown (4 main bullet points)
+- Builds a Java (Spring Boot) application with Maven  
+- Containerizes it using Docker  
+- Pushes the image to Amazon ECR  
+- Deploys to Amazon EKS using Kubernetes manifests  
 
-1. Source Code Checkout
+---
 
-Jenkins pulls the jenkins-jobs branch from GitLab
-Git authentication handled via Jenkins credentials
+## ⚙️ Pipeline Stages
 
-2. Build Java Application
+### 1. Source Checkout
+- Pulls `jenkins-jobs` branch from GitLab  
+- Uses Jenkins credentials for authentication  
 
-mvn clean package
-Runs unit tests
-Produces a Spring Boot JAR
+### 2. Build
+- Runs `mvn clean package`  
+- Executes unit tests  
+- Produces JAR artifact  
 
-3. Docker Build & Push to ECR
+### 3. Docker Build & Push
+- Builds image using Amazon Corretto base image  
+- Tags and pushes to ECR  
+- Authenticates with AWS  
 
-docker build -t <ECR_REPO>:latest .
-docker push <ECR_REPO>:latest
-Uses Amazon Corretto base image
-Authenticates securely with AWS ECR
+### 4. Deploy to EKS
 
-4. Deploy to Amazon EKS
+- Configure kubeconfig:
+  
+  `aws eks update-kubeconfig --region us-east-1 --name demo-cluster`
 
-aws eks update-kubeconfig --region us-east-1 --name demo-cluster
-kubectl apply -f kubernetes/
-Dynamically configures kubeconfig
-Deploys application with rolling updates
+- Deploy to cluster:
+  
+  `kubectl apply -f kubernetes/`
 
-## Challenges Encountered (Real-World)
+- Performs rolling updates  
 
-This pipeline required 23+ executions to stabilize. You can check the pipelines_failures folders to see some of the pipelines failures. 
+---
 
-Key issues included:
+## 🧰 Tech Stack
 
-❌ Jenkins Missing AWS CLI
-Symptom: aws: not found
-Fix: 
-- Installed AWS CLI inside the Jenkins container
-- Learned that Jenkins pipelines run where the agent executes
+- Jenkins (CI/CD)  
+- Maven (Build)  
+- Docker (Containerization)  
+- AWS ECR (Registry)  
+- Kubernetes / EKS (Orchestration)  
+- AWS (Cloud)  
+- aws-cli, kubectl  
+- GitLab  
 
-❌ kubectl Could Not Reach Cluster
-Root Cause: kubeconfig was missing
-Fix: aws eks update-kubeconfig
+---
 
-❌ Wrong EKS Cluster Name
-Error: ResourceNotFoundException: No cluster found
-Fix: Verified cluster name directly in AWS Console
+## ⚠️ Challenges & Fixes
 
-❌ Jenkins Agent Misunderstanding
-Confusion between Jenkins controller, container, and agent
-Realized tooling must exist in the agent environment
+- **AWS CLI missing in Jenkins** → Installed CLI in execution environment  
+- **kubectl could not connect** → Generated kubeconfig via AWS CLI  
+- **Wrong EKS cluster name** → Verified directly in AWS Console  
+- **Jenkins agent vs controller confusion** → Ensured tools run in agent  
+- **Docker permission issues** → Fixed execution context and permissions  
 
-❌ Docker Permission Issues
+> Pipeline required 23+ runs to stabilize (see `pipelines_failures/`)
 
-Jenkins user lacked required privileges
-Resolved by correcting execution context
+---
 
-## Final Result
-The pipeline now completes end-to-end successfully:
+## ✅ Result
 
-✔ Code builds 
-✔ Image pushed to ECR
-✔ Kubernetes resources created
-✔ Application deployed to EKS
+- ✔ Application builds successfully  
+- ✔ Image pushed to ECR  
+- ✔ Kubernetes resources created  
+- ✔ Application deployed to EKS  
 
-I got skills on 
+---
 
-✅ Jenkins agent vs controller confusion — and resolution
-✅ AWS CLI missing inside Jenkins container (classic real-world failure)
-✅ EKS kubeconfig generation via AWS CLI
-✅ Correct ECR authentication flow
-✅ Kubernetes manifests actually applied to a real cluster
-✅ Debugging IAM / cluster naming issues
-✅ Understanding why pipelines fail, not just that they fail
+## 💡 Key Learnings
 
-## Some Proof screenshots
+- CI/CD failures are often **environment-related, not code-related**  
+- Strong understanding of **Jenkins execution model (agent vs controller)**  
+- Hands-on experience with:
+  - AWS CLI in pipelines  
+  - ECR authentication  
+  - EKS kubeconfig setup  
+  - Kubernetes deployments  
 
-1. Screenshot showing 23 runs that made me debugged for 2 days.
-![Lighthouse Report](/images/23runs.png)
+---
 
-2. Screenshot showing success on the CICD pipeline
-![Lighthouse Report](/images/pipeline_success.png)
+## 🧪 Takeaway
+
+This project demonstrates the ability to design, implement, and debug a real-world CI/CD pipeline across Jenkins, Docker, AWS, and Kubernetes — focusing on reliability, not just implementation.
