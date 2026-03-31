@@ -15,17 +15,17 @@ A production-style CI/CD pipeline that automates the deployment of a Java applic
 
 End-to-end pipeline that:
 
-- Builds a Java (Spring Boot) application with Maven  
+- Builds a Java (Spring Boot) application with Maven.    
 - Containerizes it using Docker  
 - Pushes the image to Amazon ECR  
 - Deploys to Amazon EKS using Kubernetes manifests  
-
+- Note: I replaced the real java app by a Java baseline since I can't share the real Java app for security reasons.
 ---
 
 ## ⚙️ Pipeline Stages
 
 ### 1. Source Checkout
-- Pulls `jenkins-jobs` branch from GitLab  
+- Pulls `jenkins-jobs` branch  
 - Uses Jenkins credentials for authentication  
 
 ### 2. Build
@@ -54,7 +54,7 @@ End-to-end pipeline that:
 
 ## 🧰 Tech Stack
 
-- Jenkins (CI/CD) = because  
+- Jenkins (CI/CD) (Note: I've replaced the real java app by a Java baseline since I can't share the real Java app for security reasons)
 - Maven (Build)  
 - Docker (Containerization)  
 - AWS ECR (Registry)  
