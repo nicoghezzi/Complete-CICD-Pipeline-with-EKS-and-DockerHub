@@ -54,7 +54,7 @@ End-to-end pipeline that:
 
 ## 🧰 Tech Stack
 
-- Jenkins (CI/CD) (Note: I've replaced the real java app by a Java baseline since I can't share the real Java app for security reasons)
+- Jenkins (CI/CD) (Note: I used Jenkins because it was the default tool used by the workplace, however I would've used GitHub Actions or GitLab CI instead)
 - Maven (Build)  
 - Docker (Containerization)  
 - AWS ECR (Registry)  
