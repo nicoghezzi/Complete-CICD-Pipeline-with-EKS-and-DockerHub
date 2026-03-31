@@ -54,7 +54,7 @@ End-to-end pipeline that:
 
 ## 🧰 Tech Stack
 
-- Jenkins (CI/CD)  
+- Jenkins (CI/CD) = because  
 - Maven (Build)  
 - Docker (Containerization)  
 - AWS ECR (Registry)  
@@ -100,4 +100,5 @@ End-to-end pipeline that:
 
 ## 🧪 Takeaway
 
+Go to proof folder on project root to find evidence.
 This project demonstrates the ability to design, implement, and debug a real-world CI/CD pipeline across Jenkins, Docker, AWS, and Kubernetes — focusing on reliability, not just implementation.
